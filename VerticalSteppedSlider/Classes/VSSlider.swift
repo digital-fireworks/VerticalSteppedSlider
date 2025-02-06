@@ -213,15 +213,7 @@ public class VSSlider: UIControl {
     }
     
     fileprivate func updateSlider() {
-        let layoutDirection: UIUserInterfaceLayoutDirection
-        
-        if #available(iOS 10.0, *) {
-            layoutDirection = slider.effectiveUserInterfaceLayoutDirection
-        } else if #available(iOS 9.0, *) {
-            layoutDirection = UIView.userInterfaceLayoutDirection(for: slider.semanticContentAttribute)
-        } else {
-            layoutDirection = UIApplication.shared.userInterfaceLayoutDirection
-        }
+        let layoutDirection: UIUserInterfaceLayoutDirection = slider.effectiveUserInterfaceLayoutDirection
         
         switch (vertical, ascending, layoutDirection) {
         case (true, false, .leftToRight),
@@ -234,6 +226,8 @@ public class VSSlider: UIControl {
             slider.transform = CGAffineTransform(scaleX: 1, y: -1)
         case (false, false, _):
             slider.transform = .identity
+        default:
+            break
         }
         
         slider.minimumValue = minimumValue
@@ -272,7 +266,7 @@ public class VSSlider: UIControl {
         }
     }
     
-    override public func addTarget(_ target: Any?, action: Selector, for controlEvents: UIControlEvents) {
+    override public func addTarget(_ target: Any?, action: Selector, for controlEvents: UIControl.Event) {
         slider.addTarget(target, action: action, for: controlEvents)
     }
     
@@ -288,14 +282,29 @@ public class VSSlider: UIControl {
     // MARK: - Drawing methods
     
     private func updateTrackImage() {
-
+        // Don't attempt to create track image if we have zero size
+        guard bounds.width > 0, bounds.height > 0, slider.bounds.width > 0, slider.bounds.height > 0 else {
+            return
+        }
+        
         // Get slider dimensions
         let sliderBounds = slider.bounds
         let trackBounds = slider.trackRect(forBounds: sliderBounds)
+        
+        // Ensure we have valid track bounds
+        guard trackBounds.width > 0, trackBounds.height > 0 else {
+            return
+        }
+        
         let thumbWidth = slider.thumbRect(forBounds: sliderBounds, trackRect: trackBounds, value: 0).size.width
 
         // We create an innerRect in which we paint the lines
         let innerRect = sliderBounds.insetBy(dx: 1.0, dy: (sliderBounds.height - trackWidth) / 2)
+        
+        // Validate innerRect
+        guard innerRect.width > 0, innerRect.height > 0 else {
+            return
+        }
 
         // Get the range for drawing marks
         let range = getRangeForMarks()
@@ -312,7 +321,13 @@ public class VSSlider: UIControl {
     }
 
     private func getTrackImage(innerRect: CGRect, thumbWidth: CGFloat, range: [Float], trackColor: UIColor, trackImage: UIImage?) -> UIImage? {
-        UIGraphicsBeginImageContext(innerRect.size)
+        // Validate that we have a non-zero rect size
+        guard innerRect.width > 0, innerRect.height > 0 else {
+            return nil
+        }
+        
+        // Create the image context with the validated size
+        UIGraphicsBeginImageContextWithOptions(innerRect.size, false, 0)
         guard let context = UIGraphicsGetCurrentContext() else {
             return nil
         }
